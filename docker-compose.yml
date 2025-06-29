@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: skud_admin
+      POSTGRES_PASSWORD: 1337
+      POSTGRES_DB: domophone_db
+    volumes:
+      - domophone_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    networks:
+      - domnet
+    container_name: dom_db
+
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - domnet
+    container_name: mqtt_broker
+
+  emulator:
+    build:
+      context: ./emulator  # Путь к папке с main.py и DomophoneModel.py
+      dockerfile: Dockerfile
+    depends_on:
+      - mqtt-broker
+    networks:
+      - domnet
+    container_name: dom_emulator
+
+
+volumes:
+  domophone_data:
+
+networks:
+  domnet:
+    name: skud_network
+    driver: bridge
