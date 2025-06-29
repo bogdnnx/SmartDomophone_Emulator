@@ -1,7 +1,8 @@
-import asyncio
 import json
 import random
 import logging
+import time
+import threading
 import paho.mqtt.client as mqtt
 from DomophoneModel import Domophone
 
@@ -42,26 +43,25 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
-        # Запускаем асинхронную корутину из синхронного контекста
-        asyncio.run_coroutine_threadsafe(domophone.handle_command(client, payload), loop=asyncio.get_event_loop())
+        domophone.handle_command(client, payload)
     except Exception as e:
         logger.error(f"Error processing message: {e}")
 
-# Асинхронная задача для отправки статусов
-async def status_loop():
+# Функция для отправки статусов
+def status_loop():
     while True:
-        await domophone.send_status(client)
-        await asyncio.sleep(30)
+        domophone.send_status(client)
+        time.sleep(30)
 
-# Асинхронная задача для генерации событий
-async def event_loop():
+# Функция для генерации событий
+def event_loop():
     while True:
         event_type = random.choice(["call", "key_used"])
-        await domophone.send_event(client, event_type)
-        await asyncio.sleep(random.randint(10, 60))
+        domophone.send_event(client, event_type)
+        time.sleep(random.randint(10, 60))
 
 # Главная функция
-async def main():
+def main():
     # Подключение обработчиков
     client.on_connect = on_connect
     client.on_message = on_message
@@ -74,24 +74,28 @@ async def main():
             break
         except ConnectionRefusedError as e:
             logger.warning(f"Connection attempt {attempt+1} failed: {e}. Retrying in 5 seconds...")
-            await asyncio.sleep(5)
+            time.sleep(5)
     else:
         logger.error("Failed to connect to MQTT broker after 5 attempts")
         return
 
+    # Запуск фонового потока для обработки MQTT
     client.loop_start()
 
-    # Запуск задач
-    await asyncio.gather(
-        status_loop(),
-        event_loop()
-    )
+    # Запуск циклов в отдельных потоках
+    status_thread = threading.Thread(target=status_loop, daemon=True)
+    event_thread = threading.Thread(target=event_loop, daemon=True)
+    status_thread.start()
+    event_thread.start()
+
+    # Главный цикл для поддержания работы программы
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")
+        client.loop_stop()
+        client.disconnect()
 
 if __name__ == "__main__":
-    # Создаём событийный цикл для использования в on_message
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        asyncio.run(main())
-    finally:
-        loop.close()
+    main()
