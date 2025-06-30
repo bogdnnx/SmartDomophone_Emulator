@@ -36,6 +36,20 @@ services:
       - domnet
     container_name: dom_emulator
 
+  web:
+    build:
+      context: ./web_server
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mqtt-broker
+      - emulator
+      - db
+    networks:
+      - domnet
+    container_name: web_api
+
 
 volumes:
   domophone_data:

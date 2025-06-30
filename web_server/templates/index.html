@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление домофонами</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        button, select { margin: 10px; padding: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Управление домофонами</h1>
+        <h3>Статус домофонов</h3>
+        <table>
+            <tr>
+                <th>Имя</th>
+                <th>MAC</th>
+                <th>Модель</th>
+                <th>Адрес</th>
+                <th>Статус</th>
+                <th>Дверь</th>
+                <th>Ключи</th>
+                <th>Активен</th>
+                <th>Действие</th>
+            </tr>
+            {% for domophone in domophones %}
+            <tr>
+                <td>{{ domophone_names[domophone.mac_adress] }}</td>
+                <td>{{ domophone.mac_adress }}</td>
+                <td>{{ domophone.model }}</td>
+                <td>{{ domophone.adress }}</td>
+                <td>{{ domophone.status }}</td>
+                <td>{{ domophone.door_status }}</td>
+                <td>{{ domophone.keys }}</td>
+                <td>{{ "Да" if domophone.is_active else "Нет" }}</td>
+                <td>
+                    <form method="post" action="/command">
+                        <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                        <input type="hidden" name="command" value="open_door">
+                        <button type="submit">Открыть дверь</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h3>Последние события</h3>
+        <table>
+            <tr>
+                <th>Время</th>
+                <th>Домофон</th>
+                <th>Тип события</th>
+                <th>Квартира</th>
+                <th>Ключ</th>
+            </tr>
+            {% for event in events %}
+            <tr>
+                <td>{{ event.timestamp }}</td>
+                <td>{{ domophone_names[event.mac_adress] }}</td>
+                <td>{{ event.event_type }}</td>
+                <td>{{ event.apartment or "N/A" }}</td>
+                <td>{{ event.key_id or "N/A" }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</body>
+</html>
