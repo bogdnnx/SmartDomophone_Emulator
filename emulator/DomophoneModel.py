@@ -2,7 +2,7 @@ import json
 import random
 import logging
 import time
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Protocol
 import paho.mqtt.client as mqtt
 
 # Настройка логирования
@@ -12,12 +12,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class EventStrategy:
+class EventStrategy(Protocol):
     """Базовый класс для стратегий генерации событий."""
     def generate_event(self, domophone, client: mqtt.Client) -> Dict[str, Any]:
-        raise NotImplementedError
+        ...
 
-class CallEventStrategy(EventStrategy):
+class CallEventStrategy:
     """Стратегия для события звонка."""
     def generate_event(self, domophone, client: mqtt.Client) -> Dict[str, Any]:
         event = {
@@ -28,7 +28,7 @@ class CallEventStrategy(EventStrategy):
         }
         return event
 
-class KeyUsedEventStrategy(EventStrategy):
+class KeyUsedEventStrategy:
     """Стратегия для события использования ключа."""
     def generate_event(self, domophone, client: mqtt.Client) -> Dict[str, Any]:
         if not domophone.keys:
@@ -42,7 +42,7 @@ class KeyUsedEventStrategy(EventStrategy):
         }
         return event
 
-class DoorOpenedEventStrategy(EventStrategy):
+class DoorOpenedEventStrategy:
     """Стратегия для события открытия двери."""
     def generate_event(self, domophone, client: mqtt.Client) -> Dict[str, Any]:
         event = {
@@ -164,6 +164,24 @@ class Domophone:
                     flat_number = payload["flat_number"]
                     self.call_to_flat(flat_number, client)
                     logger.info(f"Processed call_to_flat command for {self.mac_adress}, apartment {flat_number}")
+                elif payload["command"] == "open_by_key" and "key_id" in payload:
+                    key_id = payload["key_id"]
+                    self.open_by_key(key_id, client)
+                    logger.info(f"Processed open_by_key command for {self.mac_adress}, key {key_id}")
+                elif payload["command"] == "close_door":
+                    self.close_door()
+                    self.send_status(client)  # Отправляем обновлённый статус после закрытия двери
+                    logger.info(f"Processed close_door command for {self.mac_adress}")
+                elif payload["command"] == "add_keys" and "keys" in payload:
+                    keys = payload["keys"]
+                    if not isinstance(keys, list) or not all(isinstance(k, int) for k in keys):
+                        logger.warning(f"Invalid keys format: {keys}")
+                        return
+                    self.add_keys(keys)
+                    logger.info(f"Processed add_keys command for {self.mac_adress}, keys {keys}")
+                elif payload["command"] == "check_status":
+                    self.send_status(client)
+                    logger.info(f"Processed check_status command for {self.mac_adress}")
                 else:
                     logger.warning(f"Unknown command: {payload['command']}")
         except Exception as e:

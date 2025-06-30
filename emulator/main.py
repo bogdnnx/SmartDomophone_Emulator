@@ -19,14 +19,32 @@ PORT = 1883
 TOPIC_COMMANDS = "domophone/commands"
 
 # Инициализация домофона
-domophone = Domophone(
-    mac_adress="00:11:22:33:44:55",
-    model="TopX",
-    flats_range=50,
-    adress="ул. Ленина, 10",
-    status=True,
-    keys=[1234, 5678]
-)
+domophones = [
+    Domophone(
+        mac_adress="00:11:22:33:44:55",
+        model="TopX",
+        flats_range=50,
+        adress="Lenina st, 12",
+        status=True,
+        keys=[1234, 5678]
+    ),
+    Domophone(
+        mac_adress="00:11:22:33:44:66",
+        model="TopY",
+        flats_range=40,
+        adress="Miami st, 20",
+        status=True,
+        keys=[9012, 3456]
+    ),
+    Domophone(
+        mac_adress="00:11:22:33:44:77",
+        model="TopZ",
+        flats_range=60,
+        adress="Freedom st, 30",
+        status=True,
+        keys=[7890, 2345]
+    )
+]
 
 # MQTT-клиент
 client = mqtt.Client(protocol=mqtt.MQTTv5)
@@ -43,21 +61,29 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
-        domophone.handle_command(client, payload)
+        # Находим домофон по mac_adress
+        for domophone in domophones:
+            if payload.get("mac") == domophone.mac_adress:
+                domophone.handle_command(client, payload)
+                break
+        else:
+            logger.warning(f"No domophone found for mac {payload.get('mac')}")
     except Exception as e:
         logger.error(f"Error processing message: {e}")
 
-# Функция для отправки статусов
+# Функция для отправки статусов всех домофонов
 def status_loop():
     while True:
-        domophone.send_status(client)
+        for domophone in domophones:
+            domophone.send_status(client)
         time.sleep(30)
 
-# Функция для генерации событий
+# Функция для генерации событий для всех домофонов
 def event_loop():
     while True:
-        event_type = random.choice(["call", "key_used"])
-        domophone.send_event(client, event_type)
+        for domophone in domophones:
+            event_type = random.choice(["call", "key_used"])
+            domophone.send_event(client, event_type)
         time.sleep(random.randint(10, 60))
 
 # Главная функция
