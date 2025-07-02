@@ -32,6 +32,7 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - mqtt-broker
+      - web
     networks:
       - domnet
     container_name: dom_emulator
@@ -44,7 +45,6 @@ services:
       - "8000:8000"
     depends_on:
       - mqtt-broker
-      - emulator
       - db
     networks:
       - domnet

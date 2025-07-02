@@ -31,13 +31,6 @@ TOPIC_COMMANDS = "domophone/commands"
 TOPIC_STATUS = "domophone/status"
 TOPIC_EVENTS = "domophone/events"
 
-# # Список домофонов (для начальной инициализации и интерфейса)
-# DOMOPHONES = [
-#     {"mac_adress": "00:11:22:33:44:55", "name": "Домофон 1 "},
-#     {"mac_adress": "00:11:22:33:44:66", "name": "Домофон 2 "},
-#     {"mac_adress": "00:11:22:33:44:77", "name": "Домофон 3 "}
-# ]
-
 # MQTT-клиент
 client = mqtt.Client(protocol=mqtt.MQTTv5)
 
@@ -112,26 +105,12 @@ def check_inactive_domophones():
 # Инициализация
 def init():
     SQLModel.metadata.create_all(engine)
-    for domophone in DOMOPHONES:
-        with Session(engine) as session:
-            if not session.exec(select(Domophone).where(Domophone.mac_adress == domophone["mac_adress"])).first():
-                session.add(Domophone(
-                    mac_adress=domophone["mac_adress"],
-                    model="Unknown",
-                    adress=domophone["name"].split("(")[1][:-1],
-                    status="offline",
-                    door_status="closed",
-                    keys="[]",
-                    last_seen=datetime.now(),
-                    is_active=False
-                ))
-                session.commit()
     client.on_connect = on_connect
     client.on_message = on_message
     for attempt in range(5):
         try:
             client.connect(BROKER, PORT, 60)
-            logger.info("Веб-приложение успешно подключено к MQTT-брок ngu")
+            logger.info("Веб-приложение успешно подключено к MQTT-брокеру")
             break
         except ConnectionRefusedError as e:
             logger.warning(f"Попытка подключения {attempt+1} не удалась: {e}. Повтор через 5 секунд...")
@@ -154,21 +133,29 @@ def index(request: Request):
     return templates.TemplateResponse("index.html", {
         "request": request,
         "domophones": domophones,
-        "events": events,
-        "domophone_names": {d["mac_adress"]: d["name"] for d in DOMOPHONES}
+        "events": events
     })
+
+
+@app.get("/domophones")
+def get_all_domophones():
+    with Session(engine) as session:
+        domophones = session.exec(select(Domophone)).all()
+    return domophones
 
 @app.post("/command")
 def send_command(mac_adress: str = Form(...), command: str = Form(...)):
     try:
-        if mac_adress not in [d["mac_adress"] for d in DOMOPHONES]:
-            return JSONResponse({"error": "Выбран неверный домофон"}, status_code=400)
-        # if command != "open_door":
-        #     return JSONResponse({"error": "Поддерживается только команда open_door"}, status_code=400)
-        payload = {"mac": mac_adress, "command": command}
-        client.publish(TOPIC_COMMANDS, json.dumps(payload))
-        logger.info(f"Отправлена команда: {payload}")
-        return JSONResponse({"status": "Команда отправлена"})
+        with Session(engine) as session:
+            domophone = session.exec(select(Domophone).where(Domophone.mac_adress == mac_adress)).first()
+            if not domophone:
+                return JSONResponse({"error": "Выбран неверный домофон"}, status_code=400)
+            # if command != "open_door":
+            #     return JSONResponse({"error": "Поддерживается только команда open_door"}, status_code=400)
+            payload = {"mac": mac_adress, "command": command}
+            client.publish(TOPIC_COMMANDS, json.dumps(payload))
+            logger.info(f"Отправлена команда: {payload}")
+            return JSONResponse({"status": "Команда отправлена"})
     except Exception as e:
         logger.error(f"Ошибка отправки команды: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
