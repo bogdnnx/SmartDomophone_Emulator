@@ -31,12 +31,12 @@ TOPIC_COMMANDS = "domophone/commands"
 TOPIC_STATUS = "domophone/status"
 TOPIC_EVENTS = "domophone/events"
 
-# Список домофонов (для начальной инициализации и интерфейса)
-DOMOPHONES = [
-    {"mac_adress": "00:11:22:33:44:55", "name": "Домофон 1 (ул. Ленина, 10)"},
-    {"mac_adress": "00:11:22:33:44:66", "name": "Домофон 2 (ул. Советская, 20)"},
-    {"mac_adress": "00:11:22:33:44:77", "name": "Домофон 3 (ул. Мира, 30)"}
-]
+# # Список домофонов (для начальной инициализации и интерфейса)
+# DOMOPHONES = [
+#     {"mac_adress": "00:11:22:33:44:55", "name": "Домофон 1 "},
+#     {"mac_adress": "00:11:22:33:44:66", "name": "Домофон 2 "},
+#     {"mac_adress": "00:11:22:33:44:77", "name": "Домофон 3 "}
+# ]
 
 # MQTT-клиент
 client = mqtt.Client(protocol=mqtt.MQTTv5)
@@ -149,8 +149,8 @@ def on_startup():
 @app.get("/")
 def index(request: Request):
     with Session(engine) as session:
-        domophones = session.exec(select(Domophone)).all()
-        events = session.exec(select(Event).order_by(Event.timestamp.desc()).limit(10)).all()
+        domophones = session.exec(select(Domophone).order_by(Domophone.model)).all()
+        events = session.exec(select(Event).order_by(Event.timestamp.desc()).limit(25)).all()
     return templates.TemplateResponse("index.html", {
         "request": request,
         "domophones": domophones,
@@ -163,9 +163,9 @@ def send_command(mac_adress: str = Form(...), command: str = Form(...)):
     try:
         if mac_adress not in [d["mac_adress"] for d in DOMOPHONES]:
             return JSONResponse({"error": "Выбран неверный домофон"}, status_code=400)
-        if command != "open_door":
-            return JSONResponse({"error": "Поддерживается только команда open_door"}, status_code=400)
-        payload = {"mac": mac_adress, "command": "open_door"}
+        # if command != "open_door":
+        #     return JSONResponse({"error": "Поддерживается только команда open_door"}, status_code=400)
+        payload = {"mac": mac_adress, "command": command}
         client.publish(TOPIC_COMMANDS, json.dumps(payload))
         logger.info(f"Отправлена команда: {payload}")
         return JSONResponse({"status": "Команда отправлена"})

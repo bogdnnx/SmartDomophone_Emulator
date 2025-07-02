@@ -45,6 +45,11 @@
                         <input type="hidden" name="command" value="open_door">
                         <button type="submit">Открыть дверь</button>
                     </form>
+                    <form method="post" action="/command">
+                        <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                        <input type="hidden" name="command" value="close_door">
+                        <button type="submit">Закрыть дверь</button>
+                    </form>
                 </td>
             </tr>
             {% endfor %}

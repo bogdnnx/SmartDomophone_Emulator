@@ -9,7 +9,6 @@ from sqlmodel import SQLModel
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))  # Добавляем родительскую директорию в PYTHONPATH
 from models import Domophone, Event  # Импорт из models.py
 
-# Этот код должен быть в начале файла
 config = context.config
 fileConfig(config.config_file_name)
 
