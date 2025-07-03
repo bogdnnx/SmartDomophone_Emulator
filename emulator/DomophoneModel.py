@@ -4,6 +4,7 @@ import logging
 import time
 from typing import List, Optional, Dict, Any, Protocol
 import paho.mqtt.client as mqtt
+from click import command
 
 # Настройка логирования
 logging.basicConfig(
@@ -116,6 +117,20 @@ class Domophone:
         except Exception as e:
             logger.error(f"Failed to send call event: {e}")
 
+    def make_unactive(self, client: mqtt.Client):
+        self.status = False
+        door_status = "open" if not self.magnit_status else "closed"
+        status_message = {
+            "mac": self.mac_adress,
+            "model": self.model,
+            "adress": self.adress,
+            "status": "offline",  # именно строка, как в send_status!
+            "door_status": door_status,
+            "timestamp": int(time.time())
+        }
+        client.publish("domophone/status", json.dumps(status_message))
+        logger.info(f"Domophone {self.mac_adress} is unactive")
+
     def send_status(self, client: mqtt.Client) -> None:
         try:
             door_status = "open" if not self.magnit_status else "closed"
@@ -157,19 +172,13 @@ class Domophone:
                     self.send_status(client)
                     self.send_event(client, "door_opened")
                     logger.info(f"Processed open_door command for {self.mac_adress}")
+
                 elif payload["command"] == "call_to_flat" and "flat_number" in payload:
                     flat_number = payload["flat_number"]
                     self.call_to_flat(flat_number, client)
                     logger.info(f"Processed call_to_flat command for {self.mac_adress}, apartment {flat_number}")
-                elif payload["command"] == "open_by_key" and "key_id" in payload:
-                    key_id = payload["key_id"]
-                    self.open_by_key(key_id, client)
-                    logger.info(f"Processed open_by_key command for {self.mac_adress}, key {key_id}")
-                elif payload["command"] == "close_door":
-                    self.close_door()
-                    self.send_status(client)  # Отправляем обновлённый статус после закрытия двери
-                    self.send_event(client, "door_closed")
-                    logger.info(f"Processed close_door command for {self.mac_adress}")
+
+
                 elif payload["command"] == "add_keys" and "keys" in payload:
                     keys = payload["keys"]
                     if not isinstance(keys, list) or not all(isinstance(k, int) for k in keys):
@@ -177,6 +186,10 @@ class Domophone:
                         return
                     self.add_keys(keys)
                     logger.info(f"Processed add_keys command for {self.mac_adress}, keys {keys}")
+
+                elif payload["command"] == "make_unactive":
+                    self.make_unactive(client)
+                    logger.info(f"Processed make_unactive command for {self.mac_adress}")
 
                 else:
                     logger.warning(f"Unknown command: {payload['command']}")

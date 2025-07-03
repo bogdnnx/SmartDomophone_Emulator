@@ -166,6 +166,7 @@ def send_command(mac_adress: str = Form(...), command: str = Form(...), keys: st
                 session.commit()
                 #return JSONResponse({"status": "Ключи добавлены"})
 
+
             client.publish(TOPIC_COMMANDS, json.dumps(payload))
             logger.info(f"Отправлена команда: {payload}")
             return JSONResponse({"status": "Команда отправлена"})
