@@ -78,15 +78,11 @@ class Domophone:
         }
         logger.info(f"Domophone initialized: {self.mac_adress}")
 
-    def check_status(self) -> str:
-        door_status = "open" if not self.magnit_status else "closed"
-        return (f"Панель {self.model} {self.mac_adress} по адресу {self.adress}:\n"
-                f"Статус: {'online' if self.status else 'offline'}\n"
-                f"Дверь: {door_status}")
 
     def add_keys(self, keys: List[int]) -> None:
         self.keys.extend(keys)
         logger.info(f"Added keys {keys} to domophone {self.mac_adress}")
+
 
     def close_door(self) -> None:
         self.magnit_status = True
@@ -158,6 +154,7 @@ class Domophone:
             if payload["mac"] == self.mac_adress:
                 if payload["command"] == "open_door":
                     self.open_door()
+                    self.send_status(client)
                     self.send_event(client, "door_opened")
                     logger.info(f"Processed open_door command for {self.mac_adress}")
                 elif payload["command"] == "call_to_flat" and "flat_number" in payload:
@@ -171,6 +168,7 @@ class Domophone:
                 elif payload["command"] == "close_door":
                     self.close_door()
                     self.send_status(client)  # Отправляем обновлённый статус после закрытия двери
+                    self.send_event(client, "door_closed")
                     logger.info(f"Processed close_door command for {self.mac_adress}")
                 elif payload["command"] == "add_keys" and "keys" in payload:
                     keys = payload["keys"]
@@ -179,9 +177,7 @@ class Domophone:
                         return
                     self.add_keys(keys)
                     logger.info(f"Processed add_keys command for {self.mac_adress}, keys {keys}")
-                elif payload["command"] == "check_status":
-                    self.send_status(client)
-                    logger.info(f"Processed check_status command for {self.mac_adress}")
+
                 else:
                     logger.warning(f"Unknown command: {payload['command']}")
         except Exception as e:

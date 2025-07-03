@@ -48,6 +48,12 @@
                         <input type="hidden" name="command" value="close_door">
                         <button type="submit">Закрыть дверь</button>
                     </form>
+                    <form method="post" action="/command">
+                        <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                        <input type="hidden" name="command" value="add_keys">
+                        <input type="text" name="keys" placeholder="Ключи через запятую" style="width:120px;">
+                        <button type="submit">Добавить ключи</button>
+                    </form>
                 </td>
             </tr>
             {% endfor %}

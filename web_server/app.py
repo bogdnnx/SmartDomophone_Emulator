@@ -144,15 +144,28 @@ def get_all_domophones():
     return domophones
 
 @app.post("/command")
-def send_command(mac_adress: str = Form(...), command: str = Form(...)):
+def send_command(mac_adress: str = Form(...), command: str = Form(...), keys: str = Form(None)):
     try:
         with Session(engine) as session:
             domophone = session.exec(select(Domophone).where(Domophone.mac_adress == mac_adress)).first()
             if not domophone:
                 return JSONResponse({"error": "Выбран неверный домофон"}, status_code=400)
-            # if command != "open_door":
-            #     return JSONResponse({"error": "Поддерживается только команда open_door"}, status_code=400)
+
             payload = {"mac": mac_adress, "command": command}
+            if payload["command"] == "add_keys":
+                if not keys:
+                    return JSONResponse({"error": "Не указаны ключи"}, status_code=400)
+                try:
+                    keys_list = [int(k.strip()) for k in keys.split(",") if k.strip()]
+                except Exception:
+                    return JSONResponse({"error": "Ключи должны быть числами, разделёнными запятыми"}, status_code=400)
+                current_keys = json.loads(domophone.keys) if domophone.keys else []
+                current_keys.extend(keys_list)
+                domophone.keys = json.dumps(list(set(current_keys)))  # Убираем дубли
+                session.add(domophone)
+                session.commit()
+                #return JSONResponse({"status": "Ключи добавлены"})
+
             client.publish(TOPIC_COMMANDS, json.dumps(payload))
             logger.info(f"Отправлена команда: {payload}")
             return JSONResponse({"status": "Команда отправлена"})
