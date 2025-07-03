@@ -8,7 +8,8 @@ import logging
 import time
 from datetime import datetime, timedelta
 from typing import Optional
-from models import Domophone, Event
+from models import Domophone, Event, DomophoneLog
+from sqlmodel import Field
 
 # Настройка логирования
 logging.basicConfig(
@@ -74,6 +75,16 @@ def on_message(client, userdata, msg):
                     session.add(domophone)
                     session.commit()
                     logger.info(f"Сохранён статус для {mac}: {payload}")
+                    log = DomophoneLog(
+                        mac_adress=mac,
+                        log_time=datetime.now(),
+                        status=payload.get("status", "unknown"),
+                        door_status=payload.get("door_status", "unknown"),
+                        keys=json.dumps(payload.get("keys", [])),
+                        message=str(payload)
+                    )
+                    session.add(log)
+                    session.commit()
             elif msg.topic == TOPIC_EVENTS:
                 mac = payload.get("mac")
                 event_type = payload.get("event")
@@ -130,10 +141,12 @@ def index(request: Request):
     with Session(engine) as session:
         domophones = session.exec(select(Domophone).order_by(Domophone.model)).all()
         events = session.exec(select(Event).order_by(Event.timestamp.desc()).limit(25)).all()
+        logs = session.exec(select(DomophoneLog).order_by(DomophoneLog.log_time.desc()).limit(12)).all()
     return templates.TemplateResponse("index.html", {
         "request": request,
         "domophones": domophones,
-        "events": events
+        "events": events,
+        "logs": logs
     })
 
 
@@ -144,32 +157,38 @@ def get_all_domophones():
     return domophones
 
 @app.post("/command")
-def send_command(mac_adress: str = Form(...), command: str = Form(...), keys: str = Form(None)):
+def send_command(mac_adress: str = Form(...), command: str = Form(...), keys: str = Form(None), flat_number: str = Form(None)):
     try:
-        with Session(engine) as session:
-            domophone = session.exec(select(Domophone).where(Domophone.mac_adress == mac_adress)).first()
-            if not domophone:
-                return JSONResponse({"error": "Выбран неверный домофон"}, status_code=400)
-
-            payload = {"mac": mac_adress, "command": command}
-            if payload["command"] == "add_keys":
-                if not keys:
-                    return JSONResponse({"error": "Не указаны ключи"}, status_code=400)
-                try:
-                    keys_list = [int(k.strip()) for k in keys.split(",") if k.strip()]
-                except Exception:
-                    return JSONResponse({"error": "Ключи должны быть числами, разделёнными запятыми"}, status_code=400)
-                current_keys = json.loads(domophone.keys) if domophone.keys else []
-                current_keys.extend(keys_list)
-                domophone.keys = json.dumps(list(set(current_keys)))  # Убираем дубли
-                session.add(domophone)
-                session.commit()
-                #return JSONResponse({"status": "Ключи добавлены"})
-
-
-            client.publish(TOPIC_COMMANDS, json.dumps(payload))
-            logger.info(f"Отправлена команда: {payload}")
-            return JSONResponse({"status": "Команда отправлена"})
+        payload = {"mac": mac_adress, "command": command}
+        if payload["command"] == "add_keys":
+            if not keys:
+                return JSONResponse({"error": "Не указаны ключи"}, status_code=400)
+            try:
+                keys_list = [int(k.strip()) for k in keys.split(",") if k.strip()]
+            except Exception:
+                return JSONResponse({"error": "Ключи должны быть числами, разделёнными запятыми"}, status_code=400)
+            payload["keys"] = keys_list
+        elif payload["command"] == "remove_keys":
+            if not keys:
+                return JSONResponse({"error": "Не указаны ключи для удаления"}, status_code=400)
+            try:
+                keys_list = [int(k.strip()) for k in keys.split(",") if k.strip()]
+            except Exception:
+                return JSONResponse({"error": "Ключи должны быть числами, разделёнными запятыми"}, status_code=400)
+            payload["keys"] = keys_list
+        elif payload["command"] == "call_to_flat":
+            if not flat_number:
+                return JSONResponse({"error": "Не указан номер квартиры"}, status_code=400)
+            try:
+                flat_number_int = int(flat_number)
+                if flat_number_int < 1:
+                    raise ValueError
+            except Exception:
+                return JSONResponse({"error": "Номер квартиры должен быть положительным целым числом"}, status_code=400)
+            payload["flat_number"] = flat_number_int
+        client.publish(TOPIC_COMMANDS, json.dumps(payload))
+        logger.info(f"Отправлена команда: {payload}")
+        return JSONResponse({"status": "Команда отправлена"})
     except Exception as e:
         logger.error(f"Ошибка отправки команды: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)

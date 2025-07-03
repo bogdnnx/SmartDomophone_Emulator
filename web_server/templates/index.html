@@ -37,28 +37,47 @@
                 <td>{{ domophone.door_status }}</td>
                 <td>{{ domophone.keys }}</td>
                 <td>{{ "Да" if domophone.is_active else "Нет" }}</td>
-                <td>
-                    <form method="post" action="/command">
-                        <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
-                        <input type="hidden" name="command" value="open_door">
-                        <button type="submit">Открыть дверь</button>
-                    </form>
-                    <form method="post" action="/command">
-                        <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
-                        <input type="hidden" name="command" value="close_door">
-                        <button type="submit">Закрыть дверь</button>
-                    </form>
-                    <form method="post" action="/command">
-                        <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
-                        <input type="hidden" name="command" value="add_keys">
-                        <input type="text" name="keys" placeholder="Ключи через запятую" style="width:120px;">
-                        <button type="submit">Добавить ключи</button>
-                    </form>
-                    <form method="post" action="/command">
-                        <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
-                        <input type="hidden" name="command" value="make_unactive">
-                        <button type="submit">Вывести из строя</button>
-                    </form>
+                <td style="vertical-align: top;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                        <form method="post" action="/command" style="width: 100%;">
+                            <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                            <input type="hidden" name="command" value="open_door">
+                            <button type="submit" style="width: 140px;">Открыть дверь</button>
+                        </form>
+                        <form method="post" action="/command" style="width: 100%;">
+                            <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                            <input type="hidden" name="command" value="close_door">
+                            <button type="submit" style="width: 140px;">Закрыть дверь</button>
+                        </form>
+                        <form method="post" action="/command" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                            <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                            <input type="hidden" name="command" value="add_keys">
+                            <input type="text" name="keys" placeholder="Ключи через запятую" style="width: 130px; margin-bottom: 2px;">
+                            <button type="submit" style="width: 140px;">Добавить ключи</button>
+                        </form>
+                        <form method="post" action="/command" style="width: 100%;">
+                            <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                            <input type="hidden" name="command" value="make_unactive">
+                            <button type="submit" style="width: 140px;">Вывести из строя</button>
+                        </form>
+                        <form method="post" action="/command" style="width: 100%;">
+                            <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                            <input type="hidden" name="command" value="make_active">
+                            <button type="submit" style="width: 140px;">Ввести в строй</button>
+                        </form>
+                        <form method="post" action="/command" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                            <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                            <input type="hidden" name="command" value="remove_keys">
+                            <input type="text" name="keys" placeholder="Ключи удалить через запятую" style="width: 130px; margin-bottom: 2px;">
+                            <button type="submit" style="width: 140px;">Удалить ключи</button>
+                        </form>
+                        <form method="post" action="/command" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                            <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
+                            <input type="hidden" name="command" value="call_to_flat">
+                            <input type="number" name="flat_number" placeholder="№ квартиры" min="1" style="width: 130px; margin-bottom: 2px;">
+                            <button type="submit" style="width: 140px;">Позвонить</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -79,6 +98,28 @@
                 <td>{{ event.event_type }}</td>
                 <td>{{ event.apartment or "N/A" }}</td>
                 <td>{{ event.key_id or "N/A" }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h3>Логи статусов домофонов</h3>
+        <table>
+            <tr>
+                <th>Время</th>
+                <th>MAC</th>
+                <th>Статус</th>
+                <th>Дверь</th>
+                <th>Ключи</th>
+                <th>Сообщение</th>
+            </tr>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.log_time }}</td>
+                <td>{{ log.mac_adress }}</td>
+                <td>{{ log.status }}</td>
+                <td>{{ log.door_status }}</td>
+                <td>{{ log.keys }}</td>
+                <td>{{ log.message }}</td>
             </tr>
             {% endfor %}
         </table>

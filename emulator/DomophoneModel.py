@@ -101,19 +101,26 @@ class Domophone:
         self.send_event(client, "key_used")
         logger.info(f"Domophone {self.mac_adress} opened with key {key_id}")
 
-    def call_to_flat(self, flat_number: int, client: mqtt.Client) -> None:
-        if flat_number not in range(1, self.flats_range + 1):
-            logger.warning(f"Apartment {flat_number} out of range for domophone {self.mac_adress}")
-            return
+    def remove_keys(self, keys, client):
+        changed = False
+        for key_id in keys:
+            if key_id in self.keys:
+                self.keys.remove(key_id)
+                changed = True
+                logger.info(f"Domophone {self.mac_adress} deleted key {key_id}")
+        if changed:
+            self.send_status(client)
+
+    def call_to_flat(self, apartment: int, client: mqtt.Client) -> None:
         event = {
             "event": "call",
             "mac": self.mac_adress,
-            "apartment": flat_number,
+            "apartment": apartment,
             "timestamp": int(time.time())
         }
         try:
             client.publish("domophone/events", json.dumps(event))
-            logger.info(f"Call to apartment {flat_number} from domophone {self.mac_adress}")
+            logger.info(f"Call to apartment {apartment} from domophone {self.mac_adress}")
         except Exception as e:
             logger.error(f"Failed to send call event: {e}")
 
@@ -124,7 +131,22 @@ class Domophone:
             "mac": self.mac_adress,
             "model": self.model,
             "adress": self.adress,
-            "status": "offline",  # именно строка, как в send_status!
+            "status": "offline",
+            "door_status": door_status,
+            "timestamp": int(time.time())
+        }
+        client.publish("domophone/status", json.dumps(status_message))
+        logger.info(f"Domophone {self.mac_adress} is unactive")
+
+
+    def make_active(self, client: mqtt.Client):
+        self.status = True
+        door_status = "open" if not self.magnit_status else "closed"
+        status_message = {
+            "mac": self.mac_adress,
+            "model": self.model,
+            "adress": self.adress,
+            "status": "online",
             "door_status": door_status,
             "timestamp": int(time.time())
         }
@@ -139,6 +161,7 @@ class Domophone:
                 "model": self.model,
                 "adress": self.adress,
                 "status": "online" if self.status else "offline",
+                "keys": self.keys,
                 "door_status": door_status,
                 "timestamp": int(time.time())
             }
@@ -167,17 +190,22 @@ class Domophone:
                 logger.error(f"Invalid command payload: {payload}")
                 return
             if payload["mac"] == self.mac_adress:
+
                 if payload["command"] == "open_door":
                     self.open_door()
                     self.send_status(client)
                     self.send_event(client, "door_opened")
                     logger.info(f"Processed open_door command for {self.mac_adress}")
 
+                elif payload["command"] == "close_door":
+                    self.close_door()
+                    self.send_status(client)
+                    logger.info(f"Processed close_door command for {self.mac_adress}")
+
                 elif payload["command"] == "call_to_flat" and "flat_number" in payload:
                     flat_number = payload["flat_number"]
                     self.call_to_flat(flat_number, client)
                     logger.info(f"Processed call_to_flat command for {self.mac_adress}, apartment {flat_number}")
-
 
                 elif payload["command"] == "add_keys" and "keys" in payload:
                     keys = payload["keys"]
@@ -185,10 +213,25 @@ class Domophone:
                         logger.warning(f"Invalid keys format: {keys}")
                         return
                     self.add_keys(keys)
+                    self.send_status(client)
+                    self.send_event(client, "keys_added")
                     logger.info(f"Processed add_keys command for {self.mac_adress}, keys {keys}")
+
+
+                elif payload["command"] == "remove_keys" and "keys" in payload:
+                    keys = payload["keys"]
+                    if not isinstance(keys, list) or not all(isinstance(k, int) for k in keys):
+                        logger.warning(f"Invalid keys format: {keys}")
+                        return
+                    self.remove_keys(keys, client)
+                    logger.info(f"Processed remove_keys command for {self.mac_adress}, keys {keys}")
 
                 elif payload["command"] == "make_unactive":
                     self.make_unactive(client)
+                    logger.info(f"Processed make_unactive command for {self.mac_adress}")
+
+                elif payload["command"] == "make_active":
+                    self.make_active(client)
                     logger.info(f"Processed make_unactive command for {self.mac_adress}")
 
                 else:
