@@ -157,24 +157,32 @@ def get_all_domophones():
     return domophones
 
 @app.post("/command")
-def send_command(mac_adress: str = Form(...), command: str = Form(...), keys: str = Form(None), flat_number: str = Form(None)):
+def send_command(mac_adress: str = Form(...), command: str = Form(...), keys: str = Form(None), flat_number: str = Form(None), apartment: str = Form(None)):
     try:
         payload = {"mac": mac_adress, "command": command}
         if payload["command"] == "add_keys":
-            if not keys:
-                return JSONResponse({"error": "Не указаны ключи"}, status_code=400)
+            if not keys or not apartment:
+                return JSONResponse({"error": "Не указаны квартира или ключи"}, status_code=400)
             try:
+                apartment_int = int(apartment)
+                if apartment_int < 1:
+                    raise ValueError
                 keys_list = [int(k.strip()) for k in keys.split(",") if k.strip()]
             except Exception:
-                return JSONResponse({"error": "Ключи должны быть числами, разделёнными запятыми"}, status_code=400)
+                return JSONResponse({"error": "Квартира и ключи должны быть числами, ключи через запятую"}, status_code=400)
+            payload["apartment"] = apartment_int
             payload["keys"] = keys_list
         elif payload["command"] == "remove_keys":
-            if not keys:
-                return JSONResponse({"error": "Не указаны ключи для удаления"}, status_code=400)
+            if not keys or not apartment:
+                return JSONResponse({"error": "Не указаны квартира или ключи для удаления"}, status_code=400)
             try:
+                apartment_int = int(apartment)
+                if apartment_int < 1:
+                    raise ValueError
                 keys_list = [int(k.strip()) for k in keys.split(",") if k.strip()]
             except Exception:
-                return JSONResponse({"error": "Ключи должны быть числами, разделёнными запятыми"}, status_code=400)
+                return JSONResponse({"error": "Квартира и ключи должны быть числами, ключи через запятую"}, status_code=400)
+            payload["apartment"] = apartment_int
             payload["keys"] = keys_list
         elif payload["command"] == "call_to_flat":
             if not flat_number:

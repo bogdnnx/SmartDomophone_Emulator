@@ -89,7 +89,16 @@ def event_loop():
     while True:
         for domophone in domophones:
             event_type = random.choice(["call", "key_used"])
-            domophone.send_event(client, event_type)
+            if event_type == "key_used" and domophone.keys:
+                apartments = [a for a in domophone.keys if domophone.keys[a]]
+                if apartments:
+                    apartment = random.choice(apartments)
+                    key_id = random.choice(domophone.keys[apartment])
+                    domophone.send_event(client, event_type, apartment=apartment, key_id=key_id)
+                else:
+                    continue
+            else:
+                domophone.send_event(client, event_type)
         time.sleep(random.randint(10, 60))
 
 # Главная функция

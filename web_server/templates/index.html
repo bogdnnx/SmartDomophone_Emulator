@@ -52,7 +52,10 @@
                         <form method="post" action="/command" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px;">
                             <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
                             <input type="hidden" name="command" value="add_keys">
-                            <input type="text" name="keys" placeholder="Ключи через запятую" style="width: 130px; margin-bottom: 2px;">
+                            <div style="display: flex; gap: 4px;">
+                                <input type="number" name="apartment" placeholder="Кв." min="1" style="width: 50px;" required>
+                                <input type="text" name="keys" placeholder="Ключи через запятую" style="width: 80px;" required>
+                            </div>
                             <button type="submit" style="width: 140px;">Добавить ключи</button>
                         </form>
                         <form method="post" action="/command" style="width: 100%;">
@@ -68,7 +71,10 @@
                         <form method="post" action="/command" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px;">
                             <input type="hidden" name="mac_adress" value="{{ domophone.mac_adress }}">
                             <input type="hidden" name="command" value="remove_keys">
-                            <input type="text" name="keys" placeholder="Ключи удалить через запятую" style="width: 130px; margin-bottom: 2px;">
+                            <div style="display: flex; gap: 4px;">
+                                <input type="number" name="apartment" placeholder="Кв." min="1" style="width: 50px;" required>
+                                <input type="text" name="keys" placeholder="Ключи удалить через запятую" style="width: 80px;" required>
+                            </div>
                             <button type="submit" style="width: 140px;">Удалить ключи</button>
                         </form>
                         <form method="post" action="/command" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px;">
