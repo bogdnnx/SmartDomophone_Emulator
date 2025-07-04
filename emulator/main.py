@@ -67,7 +67,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
-        # Находим домофон по mac_adress
+        # Находим домофон по маку
         for domophone in domophones:
             if payload.get("mac") == domophone.mac_adress:
                 domophone.handle_command(client, payload)

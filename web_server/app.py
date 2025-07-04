@@ -106,32 +106,28 @@ def on_message(client, userdata, msg):
         logger.error(f"Ошибка обработки сообщения: {e}")
 
 # Проверка неактивных домофонов
-status_false_since = {}
+status_offline_since = {}  # Словарь для отслеживания времени перехода в "offline"
 
 def check_inactive_domophones():
     while True:
         with Session(engine) as session:
             for domophone in session.exec(select(Domophone)).all():
-                if domophone.status:
-                    if not domophone.is_active:
-                        domophone.is_active = True
-                        session.add(domophone)
-                    # Сбросить таймер, если статус снова стал True
-                    if domophone.mac_adress in status_false_since:
-                        del status_false_since[domophone.mac_adress]
+                if not domophone.status:
+                    # Если домофон только что перешёл в "offline", фиксируем время
+                    if domophone.mac_adress not in status_offline_since:
+                        status_offline_since[domophone.mac_adress] = time.time()
+                    # Проверяем, прошло ли более 120 секунд
+                    elif time.time() - status_offline_since[domophone.mac_adress] > 120:
+                        domophone.is_active = False
+                        session.add(domophone)  # Добавляем изменения в сессию
+                        # Публикуем событие
+                        client.publish("domophone/events", payload=json.dumps({"event": "check_unactivity", "mac": domophone.mac_adress}))
                 else:
-                    now = time.time()
-                    # Если только что стал False — запоминаем время, но не меняем is_active
-                    if domophone.mac_adress not in status_false_since:
-                        status_false_since[domophone.mac_adress] = now
-                    # Если False уже давно — только тогда делаем неактивным
-                    elif now - status_false_since[domophone.mac_adress] > 120:
-                        #client.publish("domophone/events", json.dumps({"Домофон": domophone.mac_adress, "Неактивен": True }))
-                        if domophone.is_active:
-                            domophone.is_active = False
-                            session.add(domophone)
-            session.commit()
-        time.sleep(10)
+                    # Если домофон "online", убираем его из словаря
+                    if domophone.mac_adress in status_offline_since:
+                        status_offline_since.pop(domophone.mac_adress)
+            session.commit()  # Сохраняем изменения в базе данных
+        time.sleep(5)
 
 # Инициализация
 def init():

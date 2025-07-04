@@ -105,13 +105,13 @@ class Domophone:
             logger.info(f"Removed keys {key_ids} from apartment {apartment} for domophone {self.mac_adress}")
             self.send_status(client)
 
-    def open_by_key(self, apartment: int, key_id: int, client: mqtt.Client) -> None:
-        if apartment not in self.keys or key_id not in self.keys[apartment]:
-            logger.warning(f"Key {key_id} not programmed for apartment {apartment} in domophone {self.mac_adress}")
-            return
-        self.open_door()
-        self.send_event(client, "key_used", apartment=apartment, key_id=key_id)
-        logger.info(f"Domophone {self.mac_adress} opened with key {key_id} for apartment {apartment}")
+    # def open_by_key(self, apartment: int, key_id: int, client: mqtt.Client) -> None:
+    #     if apartment not in self.keys or key_id not in self.keys[apartment]:
+    #         logger.warning(f"Key {key_id} not programmed for apartment {apartment} in domophone {self.mac_adress}")
+    #         return
+    #     self.open_door()
+    #     self.send_event(client, "key_used", apartment=apartment, key_id=key_id)
+    #     logger.info(f"Domophone {self.mac_adress} opened with key {key_id} for apartment {apartment}")
 
     def close_door(self) -> None:
         self.magnit_status = True
