@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "smarthomeemulator"
+version = "0.1.0"
+description = "Smart Home Domophone Emulator"
+authors = ["bogdnnx <bogdnnx@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.14"
+paho-mqtt = "^2.1.0"
+sqlmodel = "^0.0.24"
+uvicorn = {extras = ["standard"], version = "^0.35.0"}
+jinja2 = "^3.1.6"
+psycopg2-binary = "^2.9.5"
+alembic = "^1.8.1"
+python-multipart = "^0.0.20"
+requests = "^2.31.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

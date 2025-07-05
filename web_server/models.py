@@ -20,3 +20,12 @@ class Event(SQLModel, table=True):
     apartment: Optional[int] = None
     key_id: Optional[int] = None
     timestamp: datetime
+
+class DomophoneLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    mac_adress: str
+    log_time: datetime
+    status: str
+    door_status: str
+    keys: str
+    message: str

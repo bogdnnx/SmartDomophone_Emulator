@@ -3,8 +3,11 @@ import random
 import logging
 import time
 import threading
+import requests
 import paho.mqtt.client as mqtt
+from sqlmodel import Session, create_engine, select
 from DomophoneModel import Domophone
+import os
 
 # Настройка логирования
 logging.basicConfig(
@@ -14,37 +17,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Настройки MQTT
-BROKER = "mqtt-broker"
-PORT = 1883
+BROKER = os.getenv("MQTT_BROKER", "mqtt-broker")
+PORT = int(os.getenv("MQTT_PORT", "1883"))
 TOPIC_COMMANDS = "domophone/commands"
+TOPIC_STATUS = "domophone/status"
+TOPIC_EVENTS = "domophone/events"
 
-# Инициализация домофона
-domophones = [
-    Domophone(
-        mac_adress="00:11:22:33:44:55",
-        model="TopX",
-        flats_range=50,
-        adress="Lenina st, 12",
-        status=True,
-        keys=[1234, 5678]
-    ),
-    Domophone(
-        mac_adress="00:11:22:33:44:66",
-        model="TopY",
-        flats_range=40,
-        adress="Miami st, 20",
-        status=True,
-        keys=[9012, 3456]
-    ),
-    Domophone(
-        mac_adress="00:11:22:33:44:77",
-        model="TopZ",
-        flats_range=60,
-        adress="Freedom st, 30",
-        status=True,
-        keys=[7890, 2345]
-    )
-]
+# Настройки базы данных
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://skud_admin:1337@dom_db:5432/domophone_db")
+engine = create_engine(DATABASE_URL)
+
+# Загрузка домофонов из базы данных
+def load_domophones_from_api():
+    for attempt in range(10):
+        try:
+            response = requests.get("http://web:8000/domophones", timeout=3)
+            response.raise_for_status()
+            domophones_data = response.json()
+            return [
+                Domophone(
+                    mac_adress=d["mac_adress"],
+                    model=d["model"],
+                    flats_range=50,
+                    adress=d["adress"],
+                    status=d["status"] == "online",
+                    keys=json.loads(d["keys"]) if d["keys"] else []
+                )
+                for d in domophones_data
+            ]
+        except Exception as e:
+            print(f"Попытка {attempt+1}: web-сервис недоступен ({e}), жду 3 секунды...")
+            time.sleep(3)
+    raise RuntimeError("web-сервис так и не стал доступен после 10 попыток")
+
+domophones = load_domophones_from_api()
 
 # MQTT-клиент
 client = mqtt.Client(protocol=mqtt.MQTTv5)
@@ -52,24 +58,24 @@ client = mqtt.Client(protocol=mqtt.MQTTv5)
 # Обработчик подключения
 def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
-        logger.info("Connected to MQTT broker")
+        logger.info("Подключено к MQTT-брокеру")
         client.subscribe(TOPIC_COMMANDS)
     else:
-        logger.error(f"Connection failed with code {reason_code}")
+        logger.error(f"Ошибка подключения: код {reason_code}")
 
 # Обработчик сообщений
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
-        # Находим домофон по mac_adress
+        # Находим домофон по маку
         for domophone in domophones:
             if payload.get("mac") == domophone.mac_adress:
                 domophone.handle_command(client, payload)
                 break
         else:
-            logger.warning(f"No domophone found for mac {payload.get('mac')}")
+            logger.warning(f"Домофон не найден для mac {payload.get('mac')}")
     except Exception as e:
-        logger.error(f"Error processing message: {e}")
+        logger.error(f"Ошибка обработки сообщения: {e}")
 
 # Функция для отправки статусов всех домофонов
 def status_loop():
@@ -82,8 +88,21 @@ def status_loop():
 def event_loop():
     while True:
         for domophone in domophones:
+            # Проверяем, что домофон онлайн перед генерацией события
+            if not domophone.status:
+                continue
+
             event_type = random.choice(["call", "key_used"])
-            domophone.send_event(client, event_type)
+            if event_type == "key_used" and domophone.keys:
+                apartments = [a for a in domophone.keys if domophone.keys[a]]
+                if apartments:
+                    apartment = random.choice(apartments)
+                    key_id = random.choice(domophone.keys[apartment])
+                    domophone.send_event(client, event_type, apartment=apartment, key_id=key_id)
+                else:
+                    continue
+            else:
+                domophone.send_event(client, event_type)
         time.sleep(random.randint(10, 60))
 
 # Главная функция
@@ -96,13 +115,13 @@ def main():
     for attempt in range(5):
         try:
             client.connect(BROKER, PORT, 60)
-            logger.info("Successfully connected to MQTT broker")
+            logger.info("Успешно подключено к MQTT-брокеру")
             break
         except ConnectionRefusedError as e:
-            logger.warning(f"Connection attempt {attempt+1} failed: {e}. Retrying in 5 seconds...")
+            logger.warning(f"Попытка подключения {attempt+1} не удалась: {e}. Повтор через 5 секунд...")
             time.sleep(5)
     else:
-        logger.error("Failed to connect to MQTT broker after 5 attempts")
+        logger.error("Не удалось подключиться к MQTT-брокеру после 5 попыток")
         return
 
     # Запуск фонового потока для обработки MQTT
@@ -119,7 +138,7 @@ def main():
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        logger.info("Shutting down...")
+        logger.info("Завершение работы...")
         client.loop_stop()
         client.disconnect()
 
