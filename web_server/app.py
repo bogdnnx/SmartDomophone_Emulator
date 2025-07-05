@@ -112,22 +112,27 @@ def check_inactive_domophones():
     while True:
         with Session(engine) as session:
             for domophone in session.exec(select(Domophone)).all():
-                if not domophone.status:
+                if domophone.status == "offline":
                     # Если домофон только что перешёл в "offline", фиксируем время
                     if domophone.mac_adress not in status_offline_since:
+                        client.publish("domophone/events",
+                                       payload=json.dumps({"event": "domophone_unactive", "mac": domophone.mac_adress}))
                         status_offline_since[domophone.mac_adress] = time.time()
                     # Проверяем, прошло ли более 120 секунд
                     elif time.time() - status_offline_since[domophone.mac_adress] > 120:
                         domophone.is_active = False
                         session.add(domophone)  # Добавляем изменения в сессию
                         # Публикуем событие
-                        client.publish("domophone/events", payload=json.dumps({"event": "check_unactivity", "mac": domophone.mac_adress}))
+
                 else:
+                    domophone.is_active = True
                     # Если домофон "online", убираем его из словаря
                     if domophone.mac_adress in status_offline_since:
+
                         status_offline_since.pop(domophone.mac_adress)
+
             session.commit()  # Сохраняем изменения в базе данных
-        time.sleep(5)
+        time.sleep(2)
 
 # Инициализация
 def init():

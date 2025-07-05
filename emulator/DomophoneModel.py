@@ -53,15 +53,6 @@ class KeyUsedEventStrategy:
         }
         return event
 
-class DoorOpenedEventStrategy:
-    """Стратегия для события открытия двери."""
-    def generate_event(self, domophone, client: mqtt.Client) -> Dict[str, Any]:
-        event = {
-            "event": "door_opened",
-            "mac": domophone.mac_adress,
-            "timestamp": int(time.time())
-        }
-        return event
 
 class Domophone:
     """Класс для эмуляции домофона с поддержкой MQTT."""
@@ -85,7 +76,7 @@ class Domophone:
         self.event_strategies = {
             "call": CallEventStrategy(),
             "key_used": KeyUsedEventStrategy(),
-            "door_opened": DoorOpenedEventStrategy()
+
         }
         logger.info(f"Domophone initialized: {self.mac_adress}")
 
@@ -104,14 +95,6 @@ class Domophone:
                 del self.keys[apartment]
             logger.info(f"Removed keys {key_ids} from apartment {apartment} for domophone {self.mac_adress}")
             self.send_status(client)
-
-    # def open_by_key(self, apartment: int, key_id: int, client: mqtt.Client) -> None:
-    #     if apartment not in self.keys or key_id not in self.keys[apartment]:
-    #         logger.warning(f"Key {key_id} not programmed for apartment {apartment} in domophone {self.mac_adress}")
-    #         return
-    #     self.open_door()
-    #     self.send_event(client, "key_used", apartment=apartment, key_id=key_id)
-    #     logger.info(f"Domophone {self.mac_adress} opened with key {key_id} for apartment {apartment}")
 
     def close_door(self) -> None:
         self.magnit_status = True
