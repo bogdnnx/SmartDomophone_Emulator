@@ -1,13 +1,8 @@
 FROM python:3.11-slim
-
 WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+RUN pip install poetry
+COPY pyproject.toml poetry.lock ./
+RUN poetry config virtualenvs.create false
+RUN poetry install --no-interaction --no-ansi
 COPY . .
-
-CMD ["python", "main.py"]
-
-
-
+CMD ["python", "emulator/main.py"]
