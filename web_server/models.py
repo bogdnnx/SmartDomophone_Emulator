@@ -1,8 +1,17 @@
+"""
+Модуль моделей базы данных.
+
+Содержит SQLModel-классы для работы с базой данных PostgreSQL,
+включая модели домофонов, событий и логов.
+"""
+
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
 
 class Domophone(SQLModel, table=True):
+    """Модель домофона в базе данных."""
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     mac_adress: str = Field(unique=True, index=True)
     model: str
@@ -14,6 +23,8 @@ class Domophone(SQLModel, table=True):
     is_active: bool = Field(default=True)
 
 class Event(SQLModel, table=True):
+    """Модель события домофона в базе данных."""
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     mac_adress: str = Field(index=True)
     event_type: str  # call, key_used, door_opened
@@ -22,6 +33,8 @@ class Event(SQLModel, table=True):
     timestamp: datetime
 
 class DomophoneLog(SQLModel, table=True):
+    """Модель лога домофона в базе данных."""
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     mac_adress: str
     log_time: datetime
