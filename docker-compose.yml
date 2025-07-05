@@ -3,13 +3,13 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_USER: skud_admin
-      POSTGRES_PASSWORD: 1337
-      POSTGRES_DB: domophone_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - domophone_data:/var/lib/postgresql/data
     ports:
-      - "5435:5432"
+      - "${DB_PORT}:5432"
     networks:
       - domnet
     container_name: dom_db
@@ -17,7 +17,7 @@ services:
   mqtt-broker:
     image: eclipse-mosquitto:2.0
     ports:
-      - "1883:1883"
+      - "${MQTT_PORT_EXTERNAL}:1883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
     networks:
@@ -31,6 +31,10 @@ services:
     depends_on:
       - mqtt-broker
       - web
+    environment:
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+      - DATABASE_URL=${DATABASE_URL}
     networks:
       - domnet
     container_name: dom_emulator
@@ -40,10 +44,14 @@ services:
       context: .
       dockerfile: web_server/Dockerfile
     ports:
-      - "8000:8000"
+      - "${WEB_PORT}:8000"
     depends_on:
       - mqtt-broker
       - db
+    environment:
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+      - DATABASE_URL=${DATABASE_URL}
     networks:
       - domnet
     container_name: web_api

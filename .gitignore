@@ -1,1 +1,15 @@
-.idea
+# Environment variables
+.env
+
+# Poetry
+poetry.lock
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/

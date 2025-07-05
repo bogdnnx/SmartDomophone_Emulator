@@ -7,7 +7,7 @@ import requests
 import paho.mqtt.client as mqtt
 from sqlmodel import Session, create_engine, select
 from DomophoneModel import Domophone
-#from web_server.models import Domophone as DbDomophone
+import os
 
 # Настройка логирования
 logging.basicConfig(
@@ -17,14 +17,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Настройки MQTT
-BROKER = "mqtt-broker"
-PORT = 1883
+BROKER = os.getenv("MQTT_BROKER", "mqtt-broker")
+PORT = int(os.getenv("MQTT_PORT", "1883"))
 TOPIC_COMMANDS = "domophone/commands"
 TOPIC_STATUS = "domophone/status"
 TOPIC_EVENTS = "domophone/events"
 
 # Настройки базы данных
-DATABASE_URL = "postgresql://skud_admin:1337@dom_db:5432/domophone_db"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://skud_admin:1337@dom_db:5432/domophone_db")
 engine = create_engine(DATABASE_URL)
 
 # Загрузка домофонов из базы данных
