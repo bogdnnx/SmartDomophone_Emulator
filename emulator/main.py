@@ -88,6 +88,10 @@ def status_loop():
 def event_loop():
     while True:
         for domophone in domophones:
+            # Проверяем, что домофон онлайн перед генерацией события
+            if not domophone.status:
+                continue
+
             event_type = random.choice(["call", "key_used"])
             if event_type == "key_used" and domophone.keys:
                 apartments = [a for a in domophone.keys if domophone.keys[a]]

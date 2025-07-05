@@ -76,6 +76,7 @@ class Domophone:
         self.event_strategies = {
             "call": CallEventStrategy(),
             "key_used": KeyUsedEventStrategy(),
+            #"magnit_off"
 
         }
         logger.info(f"Domophone initialized: {self.mac_adress}")
@@ -189,11 +190,24 @@ class Domophone:
                 if payload["command"] == "open_door":
                     self.open_door()
                     self.send_status(client)
-                    self.send_event(client, "door_opened")
+                    # Отправляем событие открытия двери
+                    event = {
+                        "event": "door_opened",
+                        "mac": self.mac_adress,
+                        "timestamp": int(time.time())
+                    }
+                    client.publish("domophone/events", json.dumps(event))
                     logger.info(f"Processed open_door command for {self.mac_adress}")
                 elif payload["command"] == "close_door":
                     self.close_door()
                     self.send_status(client)
+                    # Отправляем событие закрытия двери
+                    event = {
+                        "event": "door_closed",
+                        "mac": self.mac_adress,
+                        "timestamp": int(time.time())
+                    }
+                    client.publish("domophone/events", json.dumps(event))
                     logger.info(f"Processed close_door command for {self.mac_adress}")
                 elif payload["command"] == "call_to_flat" and "flat_number" in payload:
                     flat_number = payload["flat_number"]
@@ -207,7 +221,15 @@ class Domophone:
                         return
                     self.add_keys(apartment, keys)
                     self.send_status(client)
-                    self.send_event(client, "keys_added")
+                    # Отправляем событие добавления ключей
+                    event = {
+                        "event": "keys_added",
+                        "mac": self.mac_adress,
+                        "apartment": apartment,
+                        "keys": keys,
+                        "timestamp": int(time.time())
+                    }
+                    client.publish("domophone/events", json.dumps(event))
                     logger.info(f"Processed add_keys command for {self.mac_adress}, apartment {apartment}, keys {keys}")
                 elif payload["command"] == "remove_keys" and "apartment" in payload and "keys" in payload:
                     apartment = int(payload["apartment"])
@@ -216,13 +238,37 @@ class Domophone:
                         logger.warning(f"Invalid keys format: {keys}")
                         return
                     self.remove_keys(apartment, keys, client)
-                    logger.info(f"Processed remove_keys command for {self.mac_adress}, apartment {apartment}, keys {keys}")
+                    # Отправляем событие удаления ключей
+                    event = {
+                        "event": "keys_removed",
+                        "mac": self.mac_adress,
+                        "apartment": apartment,
+                        "keys": keys,
+                        "timestamp": int(time.time())
+                    }
+                    client.publish("domophone/events", json.dumps(event))
+                    logger.info(
+                        f"Processed remove_keys command for {self.mac_adress}, apartment {apartment}, keys {keys}")
                 elif payload["command"] == "make_unactive":
                     self.make_unactive(client)
+                    # Отправляем событие деактивации домофона
+                    event = {
+                        "event": "domophone_deactivated",
+                        "mac": self.mac_adress,
+                        "timestamp": int(time.time())
+                    }
+                    client.publish("domophone/events", json.dumps(event))
                     logger.info(f"Processed make_unactive command for {self.mac_adress}")
                 elif payload["command"] == "make_active":
                     self.make_active(client)
-                    logger.info(f"Processed make_unactive command for {self.mac_adress}")
+                    # Отправляем событие активации домофона
+                    event = {
+                        "event": "domophone_activated",
+                        "mac": self.mac_adress,
+                        "timestamp": int(time.time())
+                    }
+                    client.publish("domophone/events", json.dumps(event))
+                    logger.info(f"Processed make_active command for {self.mac_adress}")
                 else:
                     logger.warning(f"Unknown command: {payload['command']}")
         except Exception as e:
