@@ -34,7 +34,6 @@ templates = Jinja2Templates(directory="templates")
 # Настройки базы данных
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql://skud_admin:1337@dom_db:5432/domophone_db"
 )
 engine = create_engine(DATABASE_URL)
 
